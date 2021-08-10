@@ -5,7 +5,7 @@ import rospy
 from std_msgs.msg import Bool
 from tbd_audio_msgs.msg import VADStamped
 
-THRESHOLD = 0.5  # Number of seconds before true gets published again
+THRESHOLD = 0.3  # Number of seconds before true gets published again
 
 
 def main():
