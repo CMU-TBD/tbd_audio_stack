@@ -15,6 +15,7 @@ def main():
     threshold = rospy.Duration(secs=THRESHOLD)
     last_signal = None
     con_pub = rospy.Publisher('vad_out', VADStamped, queue_size=1)
+    simple_pub = rospy.Publisher('vad_out_bool', Bool, queue_size=1)
 
     def signal_cb(msg: Bool):
         if (msg.data):
@@ -26,9 +27,12 @@ def main():
                                         (msg.header.stamp - last_signal) < threshold):
             msg.is_speech = False
         con_pub.publish(msg)
+        simple_pub.publish(Bool(data=msg.is_speech))
 
-    for topic_name in sys.argv:
-        rospy.Subscriber(topic_name, Bool, signal_cb, queue_size=1)
+    for i in range(2, len(sys.argv)):
+        if ":=" in sys.argv[i]:
+            continue
+        rospy.Subscriber(sys.argv[i], Bool, signal_cb, queue_size=1)
 
     rospy.Subscriber('vad', VADStamped, vad_cb, queue_size=1)
     rospy.spin()

@@ -23,14 +23,16 @@ class WebRTCVadNode:
         rospy.Subscriber('filteredAudioStamped', AudioDataStamped, self._audio_cb, queue_size=5)
         rospy.loginfo(f"{rospy.get_name()} started.")
 
-    def _audio_cb(self, msg):
+    def _audio_cb(self, msg: AudioDataStamped):
         audio_data = msg.data
-        result = self._vad.is_speech(audio_data, self._sample_rate)
-
-        response = VADStamped()
-        response.header = msg.header
-        response.is_speech = result
-        self._signal_pub.publish(response)
+        if len(audio_data) > 0:
+            result = self._vad.is_speech(audio_data, self._sample_rate)
+            response = VADStamped()
+            response.header = msg.header
+            response.is_speech = result
+            self._signal_pub.publish(response)
+        else:
+            rospy.logwarn("received invalid audio sample of size 0.")
 
 
 if __name__ == '__main__':

@@ -14,33 +14,30 @@ from tbd_audio_msgs.msg import AudioDataStamped, Utterance, VADStamped
 
 
 class SpeechEventHandler(TranscriptResultStreamHandler):
-    def __init__(self, output_stream, stream, pub, caller):
+    def __init__(self, output_stream, stream, pub, caller, partial_pub=None):
         super().__init__(output_stream)
-        self.transcript = None
         self.stream = stream
         # self._utterance_start_header = start_time
         # self._utterance_end_time = end_time
         self._pub = pub
+        self._partial_pub = partial_pub
         self._caller = caller
 
     async def handle_transcript_event(self, transcript_event: TranscriptEvent):
         # This handler can be implemented to handle transcriptions as needed.
         # Here's an example to get started.
-        hypothesis = None
         results = transcript_event.transcript.results
         for result in results:
             for alt in result.alternatives:
-                hypothesis = alt.transcript
+                resp = Utterance()
+                resp.header.stamp = self._caller.msg_start_time
+                resp.text = alt.transcript
                 if not result.is_partial:
-                    self.transcript = hypothesis
-
-                    rospy.loginfo(f"result:{self.transcript}")
-
-                    resp = Utterance()
-                    resp.header.stamp = self._caller.msg_start_time
-                    resp.text = self.transcript
-                    resp.end_time = self._caller.msg_end_time
+                    rospy.logdebug(f"final result:{resp.text}")
                     self._pub.publish(resp)
+                elif self._partial_pub is not None:
+                    rospy.logdebug(f"partial result:{resp.text}")
+                    self._partial_pub.publish(resp)
 
 
 class AWSTranscribeRecognitionNode(object):
@@ -69,6 +66,7 @@ class AWSTranscribeRecognitionNode(object):
         self._message_queue = queue.Queue(maxsize=self._vad_buffer_size * 2)
 
         self._pub = rospy.Publisher('utterance', Utterance, queue_size=1)
+        self._partial_pub = rospy.Publisher('partial_utterance', Utterance, queue_size=1)
 
         # merge the audio & vad signal
         self._audio_sub = message_filters.Subscriber(
@@ -98,12 +96,14 @@ class AWSTranscribeRecognitionNode(object):
         self._vad_buffer.append(vad.is_speech)
 
         # start transcription if certain portion of the vad is true
-        if self._vad_buffer.count(True)/len(self._vad_buffer) >= self._transcribe_ratio and not self._start_transcribe_flag.is_set():
+        if self._vad_buffer.count(True)/len(self._vad_buffer) >= self._transcribe_ratio \
+                and not self._start_transcribe_flag.is_set():
             rospy.logdebug("Starting audio transcription")
             self._stop_transcribe_flag.clear()
             self._start_transcribe_flag.set()
         # stop transcription if the ratio goes down
-        if (self._vad_buffer.count(False)/len(self._vad_buffer) >= self._transcribe_ratio) and self._start_transcribe_flag.is_set():
+        if (self._vad_buffer.count(False)/len(self._vad_buffer) >= self._transcribe_ratio) \
+                and self._start_transcribe_flag.is_set():
             self._start_transcribe_flag.clear()
             self._stop_transcribe_flag.set()
 
@@ -160,7 +160,7 @@ class AWSTranscribeRecognitionNode(object):
                 )
                 rospy.logdebug("Starting AWS Stream")
                 # Instantiate our handler and start processing events
-                handler = SpeechEventHandler(self._stream.output_stream, self._stream, self._pub, self)
+                handler = SpeechEventHandler(self._stream.output_stream, self._stream, self._pub, self, self._partial_pub)
 
                 await asyncio.gather(self._write_chunks(self._stream), handler.handle_events())
                 rospy.logdebug("Closing AWS Stream")
@@ -169,6 +169,6 @@ class AWSTranscribeRecognitionNode(object):
 
 
 if __name__ == '__main__':
-    rospy.init_node("recognition_node")
+    rospy.init_node("recognition_node", log_level=rospy.DEBUG)
     node = AWSTranscribeRecognitionNode()
     rospy.spin()
