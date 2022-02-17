@@ -50,6 +50,7 @@ add_message_files(
   FILES
   VADStamped.msg
   Utterance.msg
+  Utterance2.msg
   AudioDataStamped.msg
 )
 
