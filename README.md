@@ -53,8 +53,8 @@ This package is a wrapper for Amazon's AWS Transcribe service.  It takes in both
 8. Download the correct deepspeech model files.
    ```bash
    cd src/tbd_audio_stack/tbd_audio_recognition_deepspeech && mkdir models && cd models
-   wget https://github.com/mozilla/DeepSpeech/releases/download/v0.7.4/deepspeech-0.7.4-models.pbmm
-   wget https://github.com/mozilla/DeepSpeech/releases/download/v0.7.4/deepspeech-0.7.4-models.scorer
+   wget https://github.com/mozilla/DeepSpeech/releases/download/v0.8.2/deepspeech-0.8.2-models.pbmm
+   wget https://github.com/mozilla/DeepSpeech/releases/download/v0.8.2/deepspeech-0.8.2-models.scorer
    ```
 9.  Go back to the workspaces's root directory and build and run your project. Make sure to be in the python3 virtual environment.
     ```bash
